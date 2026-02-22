@@ -267,6 +267,23 @@
             color: #000;
             border-color: #000;
         }
+
+        /* Toast Notification */
+        #toast {
+            position: fixed;
+            bottom: 180px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: none;
+            z-index: 3000;
+            border: 1px solid #555;
+            transition: opacity 0.3s;
+        }
     </style>
 </head>
 
@@ -291,12 +308,14 @@
 
             <div id="shutter-btn" onclick="capture()"></div>
 
-            <div id="gallery-preview" onclick="saveToDevice()">
+            <div id="gallery-preview" onclick="reopenLastPhoto()">
                 <img id="prev-img" src="" style="display:none">
-                <div class="dial-label" style="margin-top: 50px;">Save</div>
+                <div class="dial-label" style="margin-top: 50px;">Review</div>
             </div>
         </div>
     </div>
+
+    <div id="toast">Photo Saved!</div>
 
     <div id="flash"></div>
 
@@ -436,6 +455,21 @@
             link.download = `vintage_${Date.now()}.jpg`;
             link.href = dataUrl;
             link.click();
+
+            showToast("Photo Captured!");
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        }
+
+        function reopenLastPhoto() {
+            const prev = document.getElementById('prev-img');
+            if (prev.src) showLightbox(prev.src);
+            else showToast("Snap a photo first!");
         }
 
         function showLightbox(src) {
@@ -464,6 +498,7 @@
                         title: 'Vintage Photo',
                         text: 'Shot on Vintage Cam'
                     });
+                    showToast("Shared!");
                 } else {
                     saveToDevice(); // Fallback to direct download
                 }
@@ -479,6 +514,7 @@
             link.download = `vintage_${Date.now()}.jpg`;
             link.href = img.src;
             link.click();
+            showToast("Saved to Device!");
         }
 
         async function installApp() {
@@ -493,9 +529,6 @@
 
         init();
     </script>
-</body>
-
-</html>
 </body>
 
 </html>
