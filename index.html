@@ -440,23 +440,30 @@
             ctx.textAlign = "right";
             ctx.fillText("'26 02 22", saveCanvas.width - 20, saveCanvas.height - 20);
 
-            const dataUrl = saveCanvas.toDataURL('image/jpeg', 0.8);
+            const dataUrl = saveCanvas.toDataURL('image/jpeg', 0.9);
 
             // Update preview image
             const prev = document.getElementById('prev-img');
             prev.src = dataUrl;
             prev.style.display = 'block';
 
-            // Show in Lightbox
+            // Show in Lightbox (Full screen preview)
             showLightbox(dataUrl);
 
-            // AUTO DOWNLOAD as fallback
+            // ROBUST AUTO DOWNLOAD: Append to body, click, then remove
+            const fileName = `vintage_${Date.now()}.jpg`;
             const link = document.createElement('a');
-            link.download = `vintage_${Date.now()}.jpg`;
             link.href = dataUrl;
-            link.click();
+            link.download = fileName;
+            link.style.display = 'none';
+            document.body.appendChild(link);
 
-            showToast("Photo Captured!");
+            // Timeout ensures the UI (Flash/Lightbox) renders before the save dialog interrupts
+            setTimeout(() => {
+                link.click();
+                document.body.removeChild(link);
+                showToast("Photo Downloaded!");
+            }, 100);
         }
 
         function showToast(msg) {
