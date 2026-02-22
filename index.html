@@ -377,10 +377,18 @@
             ctx.textAlign = "right";
             ctx.fillText("'26 02 22", saveCanvas.width - 20, saveCanvas.height - 20);
 
-            lastCapturedData = saveCanvas.toDataURL('image/jpeg', 0.8);
+            const dataUrl = saveCanvas.toDataURL('image/jpeg', 0.8);
+
+            // Update preview image
             const prev = document.getElementById('prev-img');
-            prev.src = lastCapturedData;
+            prev.src = dataUrl;
             prev.style.display = 'block';
+
+            // AUTO DOWNLOAD: Trigger saving immediately
+            const link = document.createElement('a');
+            link.download = `vintage_${Date.now()}.jpg`;
+            link.href = dataUrl;
+            link.click();
         }
 
         async function installApp() {
