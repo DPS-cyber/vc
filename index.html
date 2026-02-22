@@ -12,12 +12,25 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        let deferredPrompt;
+        // SELF-HEALING: Force unregister old service workers to break cache loops
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW failed', err));
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) { registration.unregister(); }
             });
         }
+
+        // CACHE BUSTER: Add versioning to SW registration
+        const APP_VERSION = 'v5_' + Date.now();
+        let deferredPrompt;
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js?v=' + APP_VERSION)
+                    .then(() => console.log('SW v5 Registered'))
+                    .catch(err => console.log('SW failed', err));
+            });
+        }
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
@@ -33,6 +46,20 @@
                 document.getElementById('install-prompt').style.display = 'none';
             }
             deferredPrompt = null;
+        }
+
+        function forceResetApp() {
+            if (confirm("Reset App & Clear Cache?")) {
+                localStorage.clear();
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(regs => {
+                        for (let reg of regs) reg.unregister();
+                        window.location.reload(true);
+                    });
+                } else {
+                    window.location.reload(true);
+                }
+            }
         }
     </script>
     <style>
@@ -220,7 +247,8 @@
         #install-prompt {
             position: absolute;
             top: 20px;
-            right: 20px;
+            right: 80px;
+            /* Shifted to make room for Reset */
             background: var(--date-orange);
             color: #000;
             padding: 5px 12px;
@@ -230,6 +258,20 @@
             display: none;
             z-index: 1000;
             cursor: pointer;
+        }
+
+        #reset-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #333;
+            color: #888;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 8px;
+            z-index: 1000;
+            cursor: pointer;
+            border: 1px solid #444;
         }
 
         #lightbox {
@@ -295,6 +337,7 @@
 
 <body>
     <div id="camera-shell">
+        <div id="reset-btn" onclick="forceResetApp()">🔄 RESET</div>
         <div id="install-prompt" onclick="installApp()">📲 INSTALL</div>
         <div id="leather-wrap"></div>
         <div id="viewfinder-container">
