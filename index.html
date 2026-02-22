@@ -171,13 +171,23 @@
 
         /* Gallery Thumbnail */
         #gallery-preview {
-            width: 45px;
-            height: 45px;
+            width: 50px;
+            height: 50px;
             background: #111;
             border-radius: 4px;
             border: 2px solid #555;
             overflow: hidden;
             cursor: pointer;
+            position: relative;
+        }
+
+        #gallery-preview .dial-label {
+            position: absolute;
+            bottom: 2px;
+            width: 100%;
+            margin: 0;
+            font-size: 8px;
+            background: rgba(0, 0, 0, 0.6);
         }
 
         #gallery-preview img {
@@ -310,7 +320,7 @@
 
             <div id="gallery-preview" onclick="reopenLastPhoto()">
                 <img id="prev-img" src="" style="display:none">
-                <div class="dial-label" style="margin-top: 50px;">Review</div>
+                <div class="dial-label">Review</div>
             </div>
         </div>
     </div>
@@ -441,6 +451,7 @@
             ctx.fillText("'26 02 22", saveCanvas.width - 20, saveCanvas.height - 20);
 
             const dataUrl = saveCanvas.toDataURL('image/jpeg', 0.9);
+            lastCapturedData = dataUrl;
 
             // Update preview image
             const prev = document.getElementById('prev-img');
@@ -474,8 +485,7 @@
         }
 
         function reopenLastPhoto() {
-            const prev = document.getElementById('prev-img');
-            if (prev.src) showLightbox(prev.src);
+            if (lastCapturedData) showLightbox(lastCapturedData);
             else showToast("Snap a photo first!");
         }
 
