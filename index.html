@@ -399,35 +399,47 @@
             flash.style.animation = 'none'; void flash.offsetWidth;
             flash.style.animation = 'flash-anim 0.3s forwards';
 
-            const mainCanvas = document.getElementById('camera-canvas');
-            const saveCanvas = document.createElement('canvas');
-            saveCanvas.width = mainCanvas.width;
-            saveCanvas.height = mainCanvas.height;
-            const ctx = saveCanvas.getContext('2d');
-            ctx.drawImage(mainCanvas, 0, 0);
-            ctx.font = "bold 24px 'Courier New'";
-            ctx.fillStyle = "#ff6d00";
-            ctx.textAlign = "right";
-            ctx.fillText("'26 02 22", saveCanvas.width - 20, saveCanvas.height - 20);
+            try {
+                const mainCanvas = document.getElementById('camera-canvas');
+                const saveCanvas = document.createElement('canvas');
+                saveCanvas.width = mainCanvas.width;
+                saveCanvas.height = mainCanvas.height;
+                const ctx = saveCanvas.getContext('2d');
+                ctx.drawImage(mainCanvas, 0, 0);
 
-            const dataUrl = saveCanvas.toDataURL('image/jpeg', 0.9);
-            lastCapturedData = dataUrl;
+                // Overlay Date Stamp
+                ctx.font = "bold 24px 'Courier New'";
+                ctx.fillStyle = "#ff6d00";
+                ctx.textAlign = "right";
+                ctx.fillText("'26 02 22", saveCanvas.width - 20, saveCanvas.height - 20);
 
-            const prev = document.getElementById('prev-img');
-            prev.src = dataUrl;
-            prev.style.display = 'block';
+                const dataUrl = saveCanvas.toDataURL('image/jpeg', 0.9);
+                lastCapturedData = dataUrl;
 
-            showLightbox(dataUrl);
+                const prev = document.getElementById('prev-img');
+                prev.src = dataUrl;
+                prev.style.display = 'block';
 
-            const link = document.createElement('a');
-            link.href = dataUrl;
-            link.download = `vintage_${Date.now()}.jpg`;
-            document.body.appendChild(link);
-            setTimeout(() => {
-                link.click();
-                document.body.removeChild(link);
-                showToast("Saved to Device");
-            }, 100);
+                showLightbox(dataUrl);
+
+                // For Mobile: Use Blobs for better download support
+                saveCanvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `vintage_${Date.now()}.jpg`;
+                    document.body.appendChild(link);
+                    link.click();
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                        showToast("Photo Downloaded");
+                    }, 500);
+                }, 'image/jpeg', 0.9);
+            } catch (err) {
+                console.error("Capture failed", err);
+                showToast("Capture Error");
+            }
         }
 
         function showLightbox(src) {
