@@ -12,24 +12,28 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // SELF-HEALING: Force unregister old service workers to break cache loops
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (let registration of registrations) { registration.unregister(); }
-            });
-        }
-
-        // CACHE BUSTER: Add versioning to SW registration
-        const APP_VERSION = 'v5_' + Date.now();
-        let deferredPrompt;
-
+        // STABLE SW REGISTRATION
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js?v=' + APP_VERSION)
-                    .then(() => console.log('SW v5 Registered'))
-                    .catch(err => console.log('SW failed', err));
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => {
+                        console.log('SW Registered:', reg.scope);
+                        // Optional: Handle updates
+                        reg.onupdatefound = () => {
+                            const installingWorker = reg.installing;
+                            installingWorker.onstatechange = () => {
+                                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('New version available. Please refresh.');
+                                    showToast("Update available! Reload to update.");
+                                }
+                            };
+                        };
+                    })
+                    .catch(err => console.log('SW registration failed:', err));
             });
         }
+
+        let deferredPrompt;
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -398,9 +402,16 @@
         let lastCapturedData = null;
 
         async function init() {
-            console.log("Initializing Vintage Cam...");
+            console.log("Initializing Vintage Cam... Version: " + Date.now());
             if (typeof THREE === 'undefined') {
+                console.error("THREE library missing");
                 alert("Graphics library failed to load. Please check your internet connection.");
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error("Camera API not supported in this browser");
+                alert("Your browser does not support camera access. Try using Chrome or Safari.");
                 return;
             }
 
@@ -408,21 +419,22 @@
             video.autoplay = video.playsInline = true;
 
             try {
-                // Flexible constraints for PC and Mobile compatibility
-                const stream = await navigator.mediaDevices.getUserMedia({
+                const constraints = {
                     video: {
                         facingMode: { ideal: "environment" },
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     }
-                });
+                };
+                console.log("Requesting camera with constraints:", constraints);
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = stream;
                 await video.play();
-                console.log("Camera started successfully.");
+                console.log("Camera stream playing.");
                 setup();
             } catch (e) {
-                console.error("Camera error:", e);
-                alert("Camera access required to use this app. Error: " + e.message);
+                console.error("Camera access error:", e);
+                alert("Camera access denied or device not found. Error: " + e.message);
             }
         }
 
@@ -533,21 +545,37 @@
                 const response = await fetch(lastCapturedData);
                 const blob = await response.blob();
                 const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
-                if (navigator.share) {
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({ files: [file], title: 'Vintage Photo' });
                     showToast("Shared!");
                 } else {
                     saveFallback();
                 }
-            } catch (err) { saveFallback(); }
+            } catch (err) {
+                console.error("Share failed:", err);
+                saveFallback();
+            }
+        }
+
+        function saveToDevice() {
+            sharePhoto();
         }
 
         function saveFallback() {
+            if (!lastCapturedData) {
+                showToast("No photo to save!");
+                return;
+            }
+            console.log("Triggering fallback download...");
             const link = document.createElement('a');
             link.href = lastCapturedData;
             link.download = `vintage_${Date.now()}.jpg`;
+            document.body.appendChild(link);
             link.click();
-            showToast("Downloaded");
+            setTimeout(() => {
+                document.body.removeChild(link);
+                showToast("Downloaded");
+            }, 100);
         }
 
         function showToast(msg) {
