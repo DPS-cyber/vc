@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Cam - Retro Mobile Experience</title>
+    <title>Vintage Cam</title>
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -24,31 +24,20 @@
             const installBtn = document.getElementById('install-prompt');
             if (installBtn) installBtn.style.display = 'flex';
         });
-    </script>
-    <style>
-        #install-prompt {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: var(--date-orange);
-            color: #000;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            display: none;
-            align-items: center;
-            gap: 5px;
-            z-index: 1000;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            border: 2px solid #000;
+
+        async function installApp() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                document.getElementById('install-prompt').style.display = 'none';
+            }
+            deferredPrompt = null;
         }
-    </style>
+    </script>
     <style>
         :root {
             --camera-body: #1a1a1a;
-            --leather-texture: #222;
             --metal-silver: #a0a0a0;
             --accent-red: #d32f2f;
             --date-orange: #ff6d00;
@@ -61,20 +50,18 @@
             width: 100%;
             height: 100%;
             background: #000;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, system-ui, sans-serif;
             overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        /* Skeuomorphic Camera Body */
         #camera-shell {
             position: relative;
             width: 100vw;
             height: 100vh;
             max-width: 500px;
-            /* Optimized for mobile feel on desktop */
             background: var(--camera-body);
             display: flex;
             flex-direction: column;
@@ -87,15 +74,12 @@
             bottom: 20%;
             left: 0;
             right: 0;
-            background:
-                repeating-linear-gradient(45deg, #181818 0, #181818 2px, #202020 2px, #202020 4px),
-                radial-gradient(circle at 50% 50%, #252525 0%, #1a1a1a 100%);
+            background: repeating-linear-gradient(45deg, #181818 0, #181818 2px, #202020 2px, #202020 4px);
             box-shadow: inset 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 -10px 30px rgba(0, 0, 0, 0.8);
             border-top: 4px solid #333;
             border-bottom: 4px solid #333;
         }
 
-        /* Viewfinder Area */
         #viewfinder-container {
             position: relative;
             flex: 1;
@@ -113,7 +97,6 @@
             object-fit: cover;
         }
 
-        /* Controls */
         #controls {
             height: 160px;
             background: linear-gradient(to bottom, #2a2a2a, #1a1a1a);
@@ -126,34 +109,27 @@
         }
 
         #shutter-btn {
-            width: 85px;
-            height: 85px;
+            width: 80px;
+            height: 80px;
             background: radial-gradient(circle at 30% 30%, #fff, #bbb);
             border-radius: 50%;
             border: 4px solid #444;
-            box-shadow: 0 4px 0 #222, 0 8px 15px rgba(0, 0, 0, 0.5);
             cursor: pointer;
-            position: relative;
             transition: transform 0.05s;
         }
 
         #shutter-btn:active {
-            transform: scale(0.95) translateY(4px);
-            box-shadow: 0 0px 0 #222, 0 2px 5px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95);
         }
 
-        .dial-label {
-            color: #888;
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-top: 8px;
+        .side-btn-wrap {
             text-align: center;
+            cursor: pointer;
         }
 
         .side-btn {
-            width: 45px;
-            height: 45px;
+            width: 50px;
+            height: 50px;
             background: #333;
             border-radius: 50%;
             border: 2px solid #555;
@@ -161,16 +137,17 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background 0.2s;
+            font-size: 12px;
+            font-weight: bold;
         }
 
-        .side-btn:active {
-            background: #444;
+        .dial-label {
+            color: #888;
+            font-size: 9px;
+            text-transform: uppercase;
+            margin-top: 5px;
         }
 
-        /* Gallery Thumbnail */
         #gallery-preview {
             width: 50px;
             height: 50px;
@@ -182,34 +159,42 @@
             position: relative;
         }
 
-        #gallery-preview .dial-label {
-            position: absolute;
-            bottom: 2px;
-            width: 100%;
-            margin: 0;
-            font-size: 8px;
-            background: rgba(0, 0, 0, 0.6);
-        }
-
         #gallery-preview img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
 
-        /* HUD Info */
-        #hud {
+        #gallery-preview .review-label {
             position: absolute;
-            top: 15px;
-            left: 15px;
-            color: var(--accent-red);
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 12px;
-            pointer-events: none;
-            text-transform: uppercase;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            font-size: 8px;
+            text-align: center;
+            padding: 2px 0;
         }
 
-        /* Flash */
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: var(--accent-red);
+            font-family: monospace;
+            font-size: 10px;
+        }
+
+        #date-stamp {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: var(--date-orange);
+            font-family: monospace;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
         #flash {
             position: fixed;
             top: 0;
@@ -232,151 +217,133 @@
             }
         }
 
-        /* Lightbox Preview */
+        #install-prompt {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--date-orange);
+            color: #000;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 10px;
+            font-weight: bold;
+            display: none;
+            z-index: 1000;
+            cursor: pointer;
+        }
+
         #lightbox {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.95);
+            background: rgba(0, 0, 0, 0.9);
             display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 2000;
-            padding: 20px;
         }
 
         #lightbox img {
-            max-width: 100%;
-            max-height: 80vh;
-            border: 10px solid #fff;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            max-width: 90%;
+            max-height: 70vh;
+            border: 8px solid #fff;
             border-radius: 2px;
         }
 
-        #lightbox-controls {
+        #lightbox-btns {
             margin-top: 20px;
             display: flex;
-            gap: 20px;
+            gap: 15px;
         }
 
         .lb-btn {
-            background: #333;
-            color: #fff;
-            border: 2px solid #555;
-            padding: 12px 25px;
-            border-radius: 30px;
-            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: none;
             font-weight: bold;
             cursor: pointer;
         }
 
-        .lb-btn.primary {
-            background: var(--date-orange);
-            color: #000;
-            border-color: #000;
+        .lb-btn.close {
+            background: #444;
+            color: #fff;
         }
 
-        /* Toast Notification */
+        .lb-btn.save {
+            background: var(--date-orange);
+            color: #000;
+        }
+
         #toast {
             position: fixed;
             bottom: 180px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             color: #fff;
-            padding: 10px 20px;
+            padding: 8px 16px;
             border-radius: 20px;
-            font-size: 14px;
+            font-size: 12px;
             display: none;
             z-index: 3000;
-            border: 1px solid #555;
-            transition: opacity 0.3s;
         }
     </style>
 </head>
 
 <body>
     <div id="camera-shell">
-        <div id="install-prompt" onclick="installApp()">
-            <span>📲</span> INSTALL
-        </div>
+        <div id="install-prompt" onclick="installApp()">📲 INSTALL</div>
         <div id="leather-wrap"></div>
-
         <div id="viewfinder-container">
             <canvas id="camera-canvas"></canvas>
-            <div id="date-stamp">'26 02 22</div>
             <div id="hud">KODAK GOLD · AUTO</div>
+            <div id="date-stamp">'26 02 22</div>
         </div>
-
         <div id="controls">
-            <div onclick="nextFilter()">
+            <div class="side-btn-wrap" onclick="nextFilter()">
                 <div class="side-btn">FILM</div>
                 <div class="dial-label">Cycle</div>
             </div>
-
             <div id="shutter-btn" onclick="capture()"></div>
-
             <div id="gallery-preview" onclick="reopenLastPhoto()">
                 <img id="prev-img" src="" style="display:none">
-                <div class="dial-label">Review</div>
+                <div class="review-label">REVIEW</div>
             </div>
         </div>
     </div>
 
-    <div id="toast">Photo Saved!</div>
-
     <div id="flash"></div>
-
+    <div id="toast"></div>
     <div id="lightbox">
         <img id="lightbox-img" src="">
-        <div id="lightbox-controls">
-            <button class="lb-btn" onclick="closeLightbox()">Close</button>
-            <button class="lb-btn primary" onclick="sharePhoto()">Share / Save</button>
+        <div id="lightbox-btns">
+            <button class="lb-btn close" onclick="closeLightbox()">Back</button>
+            <button class="lb-btn save" onclick="sharePhoto()">Share/Save</button>
         </div>
     </div>
 
     <script id="vertexShader" type="x-shader/x-vertex">
         varying vec2 vUv;
-        void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
+        void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     </script>
-
     <script id="fragmentShader" type="x-shader/x-fragment">
-        precision lowp float; /* Optimized for lightweight performance */
+        precision lowp float;
         uniform sampler2D tDiffuse;
         uniform float time;
         uniform int filterType;
         varying vec2 vUv;
-
-        float random(vec2 p) {
-            return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
-        }
-
+        float random(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
         void main() {
             vec4 color = texture2D(tDiffuse, vUv);
-            
-            // Filters
-            if (filterType == 0) { // KODAK GOLD
-                color.rgb *= vec3(1.1, 1.0, 0.85);
-            } else if (filterType == 1) { // FUJI
-                color.rgb *= vec3(0.9, 1.1, 1.0);
-            } else if (filterType == 2) { // B&W
-                float g = dot(color.rgb, vec3(0.3, 0.59, 0.11));
-                color.rgb = vec3(g * 1.2);
-            }
-
-            // Vignette
+            if (filterType == 0) color.rgb *= vec3(1.1, 1.0, 0.85);
+            else if (filterType == 1) color.rgb *= vec3(0.9, 1.1, 1.0);
+            else if (filterType == 2) { float g = dot(color.rgb, vec3(0.3, 0.59, 0.11)); color.rgb = vec3(g * 1.2); }
             float d = distance(vUv, vec2(0.5));
             color.rgb *= smoothstep(0.8, 0.4, d);
-
-            // Lightweight Grain
             color.rgb += (random(vUv + fract(time)) - 0.5) * 0.12;
-
             gl_FragColor = vec4(color.rgb, 1.0);
         }
     </script>
@@ -392,7 +359,7 @@
             video.autoplay = video.playsInline = true;
             try {
                 video.srcObject = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment', width: 640, height: 480 } // Lower res for 'lightweight'
+                    video: { facingMode: 'environment', width: 640, height: 480 }
                 });
                 await video.play();
                 setup();
@@ -403,17 +370,14 @@
             const canvas = document.getElementById('camera-canvas');
             renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true });
             renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-
             scene = new THREE.Scene();
             camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
             texture = new THREE.VideoTexture(video);
-
             material = new THREE.ShaderMaterial({
                 uniforms: { tDiffuse: { value: texture }, time: { value: 0 }, filterType: { value: 0 } },
                 vertexShader: document.getElementById('vertexShader').textContent,
                 fragmentShader: document.getElementById('fragmentShader').textContent
             });
-
             scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
             loop();
         }
@@ -435,17 +399,12 @@
             flash.style.animation = 'none'; void flash.offsetWidth;
             flash.style.animation = 'flash-anim 0.3s forwards';
 
-            // Create a composite with date stamp for saving
             const mainCanvas = document.getElementById('camera-canvas');
             const saveCanvas = document.createElement('canvas');
             saveCanvas.width = mainCanvas.width;
             saveCanvas.height = mainCanvas.height;
             const ctx = saveCanvas.getContext('2d');
-
-            // Draw WebGL output
             ctx.drawImage(mainCanvas, 0, 0);
-
-            // Draw Date Stamp
             ctx.font = "bold 24px 'Courier New'";
             ctx.fillStyle = "#ff6d00";
             ctx.textAlign = "right";
@@ -454,95 +413,63 @@
             const dataUrl = saveCanvas.toDataURL('image/jpeg', 0.9);
             lastCapturedData = dataUrl;
 
-            // Update preview image
             const prev = document.getElementById('prev-img');
             prev.src = dataUrl;
             prev.style.display = 'block';
 
-            // Show in Lightbox (Full screen preview)
             showLightbox(dataUrl);
 
-            // ROBUST AUTO DOWNLOAD: Append to body, click, then remove
-            const fileName = `vintage_${Date.now()}.jpg`;
             const link = document.createElement('a');
             link.href = dataUrl;
-            link.download = fileName;
-            link.style.display = 'none';
+            link.download = `vintage_${Date.now()}.jpg`;
             document.body.appendChild(link);
-
-            // Timeout ensures the UI (Flash/Lightbox) renders before the save dialog interrupts
             setTimeout(() => {
                 link.click();
                 document.body.removeChild(link);
-                showToast("Photo Downloaded!");
+                showToast("Saved to Device");
             }, 100);
         }
 
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        function showLightbox(src) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox').style.display = 'flex';
         }
+
+        function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
 
         function reopenLastPhoto() {
             if (lastCapturedData) showLightbox(lastCapturedData);
             else showToast("Snap a photo first!");
         }
 
-        function showLightbox(src) {
-            const lb = document.getElementById('lightbox');
-            const img = document.getElementById('lightbox-img');
-            img.src = src;
-            lb.style.display = 'flex';
-        }
-
-        function closeLightbox() {
-            document.getElementById('lightbox').style.display = 'none';
-        }
-
         async function sharePhoto() {
-            const img = document.getElementById('lightbox-img');
-            if (!img.src) return;
-
+            if (!lastCapturedData) return;
             try {
-                const response = await fetch(img.src);
+                const response = await fetch(lastCapturedData);
                 const blob = await response.blob();
-                const file = new File([blob], 'vintage_photo.jpg', { type: 'image/jpeg' });
-
+                const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
                 if (navigator.share) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'Vintage Photo',
-                        text: 'Shot on Vintage Cam'
-                    });
+                    await navigator.share({ files: [file], title: 'Vintage Photo' });
                     showToast("Shared!");
                 } else {
-                    saveToDevice(); // Fallback to direct download
+                    saveFallback();
                 }
-            } catch (err) {
-                console.error("Sharing failed", err);
-                saveToDevice();
-            }
+            } catch (err) { saveFallback(); }
         }
 
-        function saveToDevice() {
-            const img = document.getElementById('lightbox-img');
+        function saveFallback() {
             const link = document.createElement('a');
+            link.href = lastCapturedData;
             link.download = `vintage_${Date.now()}.jpg`;
-            link.href = img.src;
             link.click();
-            showToast("Saved to Device!");
+            showToast("Downloaded");
         }
 
-        async function installApp() {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                document.getElementById('install-prompt').style.display = 'none';
-            }
-            deferredPrompt = null;
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 2000);
         }
 
         init();
