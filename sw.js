@@ -2,14 +2,26 @@ const CACHE_NAME = 'vintage-cam-v1';
 const ASSETS = [
   './index.html',
   './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
+];
+
+// We add icons separately so they don't break the whole cache if missing
+const OPTIONAL_ASSETS = [
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      cache.addAll(ASSETS);
+      // Try to cache icons but don't fail if they aren't there yet
+      OPTIONAL_ASSETS.forEach(asset => {
+        fetch(asset).then(res => {
+          if (res.ok) cache.add(asset);
+        }).catch(() => { });
+      });
+    })
   );
 });
 
