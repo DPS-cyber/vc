@@ -1,0 +1,15 @@
+{
+  "name": "Vintage Cam",
+  "short_name": "VintageCam",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000000",
+  "description": "Nostalgic retro camera with real film filters.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/685/685655.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

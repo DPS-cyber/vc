@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Vintage Cam - Retro Mobile Experience</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let deferredPrompt;
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW failed', err));
+            });
+        }
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBtn = document.getElementById('install-prompt');
+            if (installBtn) installBtn.style.display = 'flex';
+        });
+    </script>
+    <style>
+        #install-prompt {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--date-orange);
+            color: #000;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            gap: 5px;
+            z-index: 1000;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 2px solid #000;
+        }
+    </style>
+    <style>
+        :root {
+            --camera-body: #1a1a1a;
+            --leather-texture: #222;
+            --metal-silver: #a0a0a0;
+            --accent-red: #d32f2f;
+            --date-orange: #ff6d00;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Skeuomorphic Camera Body */
+        #camera-shell {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 500px;
+            /* Optimized for mobile feel on desktop */
+            background: var(--camera-body);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #leather-wrap {
+            position: absolute;
+            top: 10%;
+            bottom: 20%;
+            left: 0;
+            right: 0;
+            background:
+                repeating-linear-gradient(45deg, #181818 0, #181818 2px, #202020 2px, #202020 4px),
+                radial-gradient(circle at 50% 50%, #252525 0%, #1a1a1a 100%);
+            box-shadow: inset 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 -10px 30px rgba(0, 0, 0, 0.8);
+            border-top: 4px solid #333;
+            border-bottom: 4px solid #333;
+        }
+
+        /* Viewfinder Area */
+        #viewfinder-container {
+            position: relative;
+            flex: 1;
+            margin: 15% 5% 5% 5%;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 6px solid #333;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            background: #000;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Controls */
+        #controls {
+            height: 160px;
+            background: linear-gradient(to bottom, #2a2a2a, #1a1a1a);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: env(safe-area-inset-bottom);
+            border-top: 2px solid #444;
+            z-index: 10;
+        }
+
+        #shutter-btn {
+            width: 85px;
+            height: 85px;
+            background: radial-gradient(circle at 30% 30%, #fff, #bbb);
+            border-radius: 50%;
+            border: 4px solid #444;
+            box-shadow: 0 4px 0 #222, 0 8px 15px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.05s;
+        }
+
+        #shutter-btn:active {
+            transform: scale(0.95) translateY(4px);
+            box-shadow: 0 0px 0 #222, 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .dial-label {
+            color: #888;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .side-btn {
+            width: 45px;
+            height: 45px;
+            background: #333;
+            border-radius: 50%;
+            border: 2px solid #555;
+            color: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .side-btn:active {
+            background: #444;
+        }
+
+        /* Gallery Thumbnail */
+        #gallery-preview {
+            width: 45px;
+            height: 45px;
+            background: #111;
+            border-radius: 4px;
+            border: 2px solid #555;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        #gallery-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* HUD Info */
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: var(--accent-red);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        /* Flash */
+        #flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        @keyframes flash-anim {
+            0% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        #date-stamp {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            color: var(--date-orange);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            opacity: 0.9;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="camera-shell">
+        <div id="install-prompt" onclick="installApp()">
+            <span>📲</span> INSTALL
+        </div>
+        <div id="leather-wrap"></div>
+
+        <div id="viewfinder-container">
+            <canvas id="camera-canvas"></canvas>
+            <div id="date-stamp">'26 02 22</div>
+            <div id="hud">KODAK GOLD · AUTO</div>
+        </div>
+
+        <div id="controls">
+            <div onclick="nextFilter()">
+                <div class="side-btn">FILM</div>
+                <div class="dial-label">Cycle</div>
+            </div>
+
+            <div id="shutter-btn" onclick="capture()"></div>
+
+            <div id="gallery-preview" onclick="saveToDevice()">
+                <img id="prev-img" src="" style="display:none">
+                <div class="dial-label" style="margin-top: 50px;">Save</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="flash"></div>
+
+    <script id="vertexShader" type="x-shader/x-vertex">
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    </script>
+
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        precision lowp float; /* Optimized for lightweight performance */
+        uniform sampler2D tDiffuse;
+        uniform float time;
+        uniform int filterType;
+        varying vec2 vUv;
+
+        float random(vec2 p) {
+            return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+
+        void main() {
+            vec4 color = texture2D(tDiffuse, vUv);
+            
+            // Filters
+            if (filterType == 0) { // KODAK GOLD
+                color.rgb *= vec3(1.1, 1.0, 0.85);
+            } else if (filterType == 1) { // FUJI
+                color.rgb *= vec3(0.9, 1.1, 1.0);
+            } else if (filterType == 2) { // B&W
+                float g = dot(color.rgb, vec3(0.3, 0.59, 0.11));
+                color.rgb = vec3(g * 1.2);
+            }
+
+            // Vignette
+            float d = distance(vUv, vec2(0.5));
+            color.rgb *= smoothstep(0.8, 0.4, d);
+
+            // Lightweight Grain
+            color.rgb += (random(vUv + fract(time)) - 0.5) * 0.12;
+
+            gl_FragColor = vec4(color.rgb, 1.0);
+        }
+    </script>
+
+    <script>
+        let scene, camera, renderer, material, video, texture;
+        let filterIndex = 0;
+        const labels = ["KODAK GOLD", "FUJI PRO", "TRI-X 400"];
+        let lastCapturedData = null;
+
+        async function init() {
+            video = document.createElement('video');
+            video.autoplay = video.playsInline = true;
+            try {
+                video.srcObject = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: 640, height: 480 } // Lower res for 'lightweight'
+                });
+                await video.play();
+                setup();
+            } catch (e) { alert("Camera access required."); }
+        }
+
+        function setup() {
+            const canvas = document.getElementById('camera-canvas');
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+
+            scene = new THREE.Scene();
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+            texture = new THREE.VideoTexture(video);
+
+            material = new THREE.ShaderMaterial({
+                uniforms: { tDiffuse: { value: texture }, time: { value: 0 }, filterType: { value: 0 } },
+                vertexShader: document.getElementById('vertexShader').textContent,
+                fragmentShader: document.getElementById('fragmentShader').textContent
+            });
+
+            scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+            loop();
+        }
+
+        function loop() {
+            requestAnimationFrame(loop);
+            material.uniforms.time.value += 0.05;
+            renderer.render(scene, camera);
+        }
+
+        function nextFilter() {
+            filterIndex = (filterIndex + 1) % 3;
+            material.uniforms.filterType.value = filterIndex;
+            document.getElementById('hud').textContent = labels[filterIndex] + " · AUTO";
+        }
+
+        function capture() {
+            const flash = document.getElementById('flash');
+            flash.style.animation = 'none'; void flash.offsetWidth;
+            flash.style.animation = 'flash-anim 0.3s forwards';
+
+            // Create a composite with date stamp for saving
+            const mainCanvas = document.getElementById('camera-canvas');
+            const saveCanvas = document.createElement('canvas');
+            saveCanvas.width = mainCanvas.width;
+            saveCanvas.height = mainCanvas.height;
+            const ctx = saveCanvas.getContext('2d');
+
+            // Draw WebGL output
+            ctx.drawImage(mainCanvas, 0, 0);
+
+            // Draw Date Stamp
+            ctx.font = "bold 24px 'Courier New'";
+            ctx.fillStyle = "#ff6d00";
+            ctx.textAlign = "right";
+            ctx.fillText("'26 02 22", saveCanvas.width - 20, saveCanvas.height - 20);
+
+            lastCapturedData = saveCanvas.toDataURL('image/jpeg', 0.8);
+            const prev = document.getElementById('prev-img');
+            prev.src = lastCapturedData;
+            prev.style.display = 'block';
+        }
+
+        async function installApp() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                document.getElementById('install-prompt').style.display = 'none';
+            }
+            deferredPrompt = null;
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
+</body>
+
+</html>
